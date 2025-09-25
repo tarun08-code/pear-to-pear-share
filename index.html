@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple File Share</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: #2196F3;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .main-content {
+      display: flex;
+      min-height: 500px;
+    }
+
+    .send-section,
+    .receive-section {
+      flex: 1;
+      padding: 30px;
+    }
+
+    .send-section {
+      border-right: 2px solid #eee;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      background: #fafafa;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .drop-zone:hover {
+      border-color: #2196F3;
+      background: #f0f8ff;
+    }
+
+    .drop-zone.dragover {
+      border-color: #2196F3;
+      background: #e3f2fd;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .file-info {
+      background: #e8f5e8;
+      border: 1px solid #4caf50;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+      display: none;
+    }
+
+    .file-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .file-size {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .share-code-display {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 4px;
+      padding: 20px;
+      text-align: center;
+      margin: 20px 0;
+      display: none;
+    }
+
+    .share-code {
+      font-size: 24px;
+      font-weight: bold;
+      color: #856404;
+      letter-spacing: 2px;
+      margin: 10px 0;
+      user-select: all;
+    }
+
+    .code-input {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      text-align: center;
+      letter-spacing: 2px;
+      margin-bottom: 15px;
+    }
+
+    .btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.3s ease;
+    }
+
+    .btn:hover {
+      background: #1976D2;
+    }
+
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .copy-btn {
+      background: #4caf50;
+      padding: 10px 20px;
+      font-size: 14px;
+      width: auto;
+      margin-top: 10px;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      text-align: center;
+      display: none;
+    }
+
+    .status.connected {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      display: block;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+      display: block;
+    }
+
+    .download-area {
+      margin-top: 20px;
+    }
+
+    .file-item {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .download-btn {
+      background: #28a745;
+      padding: 8px 16px;
+      font-size: 14px;
+      width: auto;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        flex-direction: column;
+      }
+
+      .send-section {
+        border-right: none;
+        border-bottom: 2px solid #eee;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Simple File Share</h1>
+      <p>Share files directly between devices - No storage, No accounts</p>
+    </div>
+
+    <div class="main-content">
+      <!-- SEND FILES SECTION -->
+      <div class="send-section">
+        <h2>📤 SEND FILES</h2>
+
+        <div class="drop-zone" id="dropZone">
+          <p>Drag files here or click to select</p>
+          <small>Any file type, any size</small>
+        </div>
+
+        <input type="file" id="fileInput" class="file-input" multiple>
+
+        <div class="file-info" id="fileInfo">
+          <div class="file-name" id="fileName"></div>
+          <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <button class="btn" id="generateCodeBtn" disabled>Generate Share Code</button>
+
+        <div class="share-code-display" id="shareCodeDisplay">
+          <p>Share this code with receivers:</p>
+          <div class="share-code" id="shareCode"></div>
+          <button class="btn copy-btn" id="copyCodeBtn">Copy Code</button>
+          <p><small>Keep this page open while others download</small></p>
+        </div>
+
+        <div class="status" id="sendStatus"></div>
+      </div>
+
+      <!-- RECEIVE FILES SECTION -->
+      <div class="receive-section">
+        <h2>📥 RECEIVE FILES</h2>
+
+        <input type="text" class="code-input" id="codeInput" placeholder="Enter Share Code" maxlength="6">
+
+        <button class="btn" id="connectBtn">Connect</button>
+
+        <div class="status" id="receiveStatus"></div>
+
+        <div class="download-area" id="downloadArea"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Socket.IO for signaling -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+
+  <script>
+    // Global variables
+    let selectedFiles = [];
+    let shareCode = '';
+    let socket = null;
+    let peerConnection = null;
+    let dataChannel = null;
+    let isSender = false;
+    let connectedPeers = 0;
+
+    // WebRTC configuration
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    // DOM elements
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const generateCodeBtn = document.getElementById('generateCodeBtn');
+    const shareCodeDisplay = document.getElementById('shareCodeDisplay');
+    const shareCodeEl = document.getElementById('shareCode');
+    const copyCodeBtn = document.getElementById('copyCodeBtn');
+    const sendStatus = document.getElementById('sendStatus');
+
+    const codeInput = document.getElementById('codeInput');
+    const connectBtn = document.getElementById('connectBtn');
+    const receiveStatus = document.getElementById('receiveStatus');
+    const downloadArea = document.getElementById('downloadArea');
+
+    // Initialize WebSocket connection
+    function initSocket() {
+      socket = io(); // Connect to the same origin where the page is served
+
+      socket.on('connect', () => {
+        console.log('Connected to signaling server');
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Disconnected from signaling server');
+      });
+
+      socket.on('room-created', (roomCode) => {
+        console.log('Room created:', roomCode);
+      });
+
+      socket.on('joined-room', (roomCode) => {
+        console.log('Joined room:', roomCode);
+      });
+
+      socket.on('room-not-found', (roomCode) => {
+        showStatus(receiveStatus, 'Room not found. Please check the code.', 'error');
+      });
+
+      socket.on('receiver-joined', (receiverId) => {
+        console.log('Receiver joined:', receiverId);
+        handleReceiverJoined();
+      });
+
+      socket.on('offer', async (data) => {
+        console.log('Received offer');
+        await handleOffer(data.offer);
+      });
+
+      socket.on('answer', async (data) => {
+        console.log('Received answer');
+        await handleAnswer(data.answer);
+      });
+
+      socket.on('ice-candidate', async (data) => {
+        console.log('Received ICE candidate');
+        await handleIceCandidate(data.candidate);
+      });
+
+      socket.on('sender-disconnected', () => {
+        showStatus(receiveStatus, 'Sender has disconnected.', 'error');
+        downloadArea.innerHTML = '';
+      });
+
+      socket.on('file-info', (data) => {
+        console.log('Received file info:', data.files);
+        displayReceivedFiles(data.files);
+      });
+    }
+
+    // Initialize on page load
+    window.addEventListener('load', () => {
+      initSocket();
+    });
+
+    // File selection handlers
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+    });
+
+    // Handle selected files
+    function handleFiles(files) {
+      if (files.length > 0) {
+        selectedFiles = Array.from(files);
+        displayFileInfo();
+        generateCodeBtn.disabled = false;
+      }
+    }
+
+    // Display file information
+    function displayFileInfo() {
+      if (selectedFiles.length === 1) {
+        fileName.textContent = selectedFiles[0].name;
+        fileSize.textContent = formatFileSize(selectedFiles[0].size);
+      } else {
+        fileName.textContent = `${selectedFiles.length} files selected`;
+        const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+        fileSize.textContent = `Total: ${formatFileSize(totalSize)}`;
+      }
+      fileInfo.style.display = 'block';
+    }
+
+    // Format file size
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Create WebRTC peer connection
+    function createPeerConnection() {
+      peerConnection = new RTCPeerConnection(rtcConfig);
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate && socket) {
+          socket.emit('ice-candidate', {
+            room: shareCode || codeInput.value.trim().toUpperCase(),
+            candidate: event.candidate
+          });
+        }
+      };
+
+      peerConnection.onconnectionstatechange = () => {
+        console.log('Connection state:', peerConnection.connectionState);
+        if (peerConnection.connectionState === 'connected') {
+          connectedPeers++;
+          updateConnectionStatus();
+        } else if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
+          showStatus(isSender ? sendStatus : receiveStatus, 'Connection failed. Please try again.', 'error');
+        }
+      };
+
+      return peerConnection;
+    }
+
+    // Handle incoming offer (receiver side)
+    async function handleOffer(offer) {
+      if (!peerConnection) {
+        createPeerConnection();
+
+        // Handle incoming data channel
+        peerConnection.ondatachannel = (event) => {
+          const channel = event.channel;
+          setupDataChannelReceiver(channel);
+        };
+      }
+
+      try {
+        await peerConnection.setRemoteDescription(offer);
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        socket.emit('answer', {
+          room: codeInput.value.trim().toUpperCase(),
+          answer: answer
+        });
+
+        showStatus(receiveStatus, 'Connected! Waiting for files...', 'connected');
+      } catch (error) {
+        console.error('Error handling offer:', error);
+        showStatus(receiveStatus, 'Connection error. Please try again.', 'error');
+      }
+    }
+
+    // Handle incoming answer (sender side)
+    async function handleAnswer(answer) {
+      try {
+        await peerConnection.setRemoteDescription(answer);
+        showStatus(sendStatus, 'Connected! You can now send files.', 'connected');
+      } catch (error) {
+        console.error('Error handling answer:', error);
+      }
+    }
+
+    // Handle incoming ICE candidate
+    async function handleIceCandidate(candidate) {
+      try {
+        await peerConnection.addIceCandidate(candidate);
+      } catch (error) {
+        console.error('Error adding ICE candidate:', error);
+      }
+    }
+
+    // Handle receiver joined (sender side)
+    async function handleReceiverJoined() {
+      if (isSender && peerConnection) {
+        try {
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+
+          socket.emit('offer', {
+            room: shareCode,
+            offer: offer
+          });
+
+          // Send file info to receiver
+          const fileInfos = selectedFiles.map(file => ({
+            name: file.name,
+            size: file.size,
+            type: file.type
+          }));
+
+          socket.emit('file-info', {
+            room: shareCode,
+            files: fileInfos
+          });
+        } catch (error) {
+          console.error('Error creating offer:', error);
+        }
+      }
+    }
+
+    // Generate share code and start as sender
+    generateCodeBtn.addEventListener('click', async () => {
+      shareCode = Math.random().toString(36).substr(2, 6).toUpperCase();
+      shareCodeEl.textContent = shareCode;
+      shareCodeDisplay.style.display = 'block';
+      isSender = true;
+
+      showStatus(sendStatus, `Code generated! Waiting for connections...`, 'connected');
+
+      // Create peer connection and data channel
+      createPeerConnection();
+
+      // Create data channel for file transfer
+      dataChannel = peerConnection.createDataChannel('fileTransfer', {
+        ordered: true
+      });
+
+      dataChannel.onopen = () => {
+        console.log('Data channel opened');
+        showStatus(sendStatus, `Connected! Ready to send files.`, 'connected');
+      };
+
+      dataChannel.onclose = () => {
+        console.log('Data channel closed');
+      };
+
+      dataChannel.onerror = (error) => {
+        console.error('Data channel error:', error);
+        showStatus(sendStatus, 'Connection error. Please try again.', 'error');
+      };
+
+      // Register room with signaling server
+      socket.emit('create-room', shareCode);
+
+      console.log('Share code generated:', shareCode);
+    });
+
+    // Copy code to clipboard
+    copyCodeBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(shareCode);
+        copyCodeBtn.textContent = 'Copied!';
+        setTimeout(() => {
+          copyCodeBtn.textContent = 'Copy Code';
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    });
+
+    // Connect to sender as receiver
+    connectBtn.addEventListener('click', async () => {
+      const code = codeInput.value.trim().toUpperCase();
+      if (code.length !== 6) {
+        showStatus(receiveStatus, 'Please enter a valid 6-character code', 'error');
+        return;
+      }
+
+      isSender = false;
+      showStatus(receiveStatus, `Connecting to ${code}...`, 'connected');
+
+      // Join room with signaling server
+      socket.emit('join-room', code);
+
+      console.log('Attempting to connect with code:', code);
+    });
+
+    // Setup data channel for receiving files
+    function setupDataChannelReceiver(channel) {
+      let receivedFiles = {};
+      let currentFileData = null;
+
+      channel.onopen = () => {
+        console.log('Data channel opened (receiver)');
+        showStatus(receiveStatus, 'Connected! Waiting for files...', 'connected');
+      };
+
+      channel.onmessage = async (event) => {
+        const message = JSON.parse(event.data);
+
+        if (message.type === 'file-request' && isSender) {
+          // Handle file request from receiver
+          const fileIndex = message.index;
+          if (selectedFiles[fileIndex]) {
+            await sendFileToReceiver(selectedFiles[fileIndex]);
+          }
+
+        } else if (message.type === 'file-info') {
+          // Receiving file information
+          currentFileData = {
+            name: message.name,
+            size: message.size,
+            type: message.fileType,
+            data: new Uint8Array(message.size),
+            received: 0
+          };
+          console.log('Receiving file:', message.name);
+          showStatus(receiveStatus, `Receiving ${message.name}...`, 'connected');
+
+        } else if (message.type === 'file-chunk') {
+          // Receiving file chunk
+          if (currentFileData) {
+            const chunk = new Uint8Array(message.data);
+            currentFileData.data.set(chunk, message.offset);
+            currentFileData.received += chunk.length;
+
+            // Update progress
+            const progress = (currentFileData.received / currentFileData.size) * 100;
+            showStatus(receiveStatus, `Downloading ${currentFileData.name}: ${progress.toFixed(1)}%`, 'connected');
+
+            if (currentFileData.received === currentFileData.size) {
+              // File complete, trigger download
+              downloadReceivedFile(currentFileData);
+              showStatus(receiveStatus, `Download complete: ${currentFileData.name}`, 'connected');
+              currentFileData = null;
+            }
+          }
+        }
+      };
+
+      channel.onclose = () => {
+        console.log('Data channel closed');
+        showStatus(receiveStatus, 'Connection closed', 'error');
+      };
+
+      channel.onerror = (error) => {
+        console.error('Data channel error:', error);
+        showStatus(receiveStatus, 'Connection error', 'error');
+      };
+
+      // Store reference for sending requests
+      dataChannel = channel;
+    }
+
+    // Download received file
+    function downloadReceivedFile(fileData) {
+      const blob = new Blob([fileData.data], { type: fileData.type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileData.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Send file through data channel
+    async function sendFileToReceiver(file) {
+      if (!dataChannel || dataChannel.readyState !== 'open') {
+        console.error('Data channel not ready');
+        return;
+      }
+
+      // Send file info first
+      const fileInfo = {
+        type: 'file-info',
+        name: file.name,
+        size: file.size,
+        fileType: file.type
+      };
+
+      dataChannel.send(JSON.stringify(fileInfo));
+
+      // Send file in chunks
+      const chunkSize = 16384; // 16KB chunks
+      const reader = new FileReader();
+
+      for (let offset = 0; offset < file.size; offset += chunkSize) {
+        const chunk = file.slice(offset, offset + chunkSize);
+        const arrayBuffer = await readFileChunk(chunk);
+
+        const message = {
+          type: 'file-chunk',
+          data: Array.from(new Uint8Array(arrayBuffer)),
+          offset: offset
+        };
+
+        dataChannel.send(JSON.stringify(message));
+      }
+    }
+
+    // Helper to read file chunk
+    function readFileChunk(chunk) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsArrayBuffer(chunk);
+      });
+    }
+
+    // Update connection status
+    function updateConnectionStatus() {
+      if (isSender) {
+        showStatus(sendStatus, `${connectedPeers} peer(s) connected`, 'connected');
+      }
+    }
+
+    // Show status message
+    function showStatus(element, message, type) {
+      element.textContent = message;
+      element.className = `status ${type}`;
+    }
+
+    // Display available files
+    function displayAvailableFiles() {
+      downloadArea.innerHTML = '';
+
+      if (isSender && selectedFiles.length > 0) {
+        // Show selected files for download
+        selectedFiles.forEach((file, index) => {
+          const fileItem = document.createElement('div');
+          fileItem.className = 'file-item';
+          fileItem.innerHTML = `
+                        <div>
+                            <strong>${file.name}</strong><br>
+                            <small>${formatFileSize(file.size)}</small>
+                        </div>
+                        <button class="btn download-btn" onclick="requestFileDownload(${index})">Send File</button>
+                    `;
+          downloadArea.appendChild(fileItem);
+        });
+      }
+    }
+
+    // Display received files (receiver side)
+    function displayReceivedFiles(files) {
+      downloadArea.innerHTML = '';
+      showStatus(receiveStatus, 'Files available for download:', 'connected');
+
+      files.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+                    <div>
+                        <strong>${file.name}</strong><br>
+                        <small>${formatFileSize(file.size)}</small>
+                    </div>
+                    <button class="btn download-btn" onclick="requestFileDownload(${index})" id="download-${index}">Request Download</button>
+                `;
+        downloadArea.appendChild(fileItem);
+      });
+    }
+
+    // Request file download
+    function requestFileDownload(index) {
+      if (isSender && selectedFiles[index] && dataChannel && dataChannel.readyState === 'open') {
+        // Send file to connected receivers
+        sendFileToReceiver(selectedFiles[index]);
+        showStatus(sendStatus, `Sending ${selectedFiles[index].name}...`, 'connected');
+      } else if (!isSender && dataChannel && dataChannel.readyState === 'open') {
+        // Request file from sender
+        const request = {
+          type: 'file-request',
+          index: index
+        };
+        dataChannel.send(JSON.stringify(request));
+
+        const button = document.getElementById(`download-${index}`);
+        button.textContent = 'Downloading...';
+        button.disabled = true;
+      } else {
+        showStatus(isSender ? sendStatus : receiveStatus, 'Connection not ready. Please wait.', 'error');
+      }
+    }
+
+    // Download file
+    // This function has been replaced by requestFileDownload
+
+    // Auto-format code input
+    codeInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
+  </script>
+</body>
+
+</html>
