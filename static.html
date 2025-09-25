@@ -222,15 +222,17 @@
     </div>
 
     <div class="notice">
-      <strong>⚡ Static Version:</strong> This version works without a server but requires both devices to be on the same local network or have direct internet connectivity.
+      <strong>⚡ Static Version:</strong> This version works without a server but requires both devices to be on the same
+      local network or have direct internet connectivity.
     </div>
 
     <div class="instructions">
       <h3>🔧 How it works:</h3>
       <p><strong>1.</strong> Both devices must open this page<br>
-         <strong>2.</strong> One person creates a room, the other joins<br>
-         <strong>3.</strong> Files are transferred directly between browsers<br>
-         <strong>4.</strong> Works best on local networks (same WiFi)</p>
+        <strong>2.</strong> One person creates a room, the other joins<br>
+        <strong>3.</strong> Files are transferred directly between browsers<br>
+        <strong>4.</strong> Works best on local networks (same WiFi)
+      </p>
     </div>
 
     <div class="main-content">
@@ -427,7 +429,7 @@
       try {
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        
+
         showManualSignaling('offer', offer);
       } catch (error) {
         console.error('Error creating offer:', error);
@@ -583,9 +585,9 @@
     // Display available files for sending
     function displayAvailableFiles() {
       if (!isSender || selectedFiles.length === 0) return;
-      
+
       downloadArea.innerHTML = '';
-      
+
       selectedFiles.forEach((file, index) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -616,7 +618,7 @@
           size: file.size,
           type: file.type
         }));
-        
+
         dataChannel.send(JSON.stringify({
           type: 'file-list',
           files: fileList
@@ -627,7 +629,7 @@
     // Display received files for downloading
     function displayReceivedFiles(files) {
       downloadArea.innerHTML = '';
-      
+
       files.forEach((file, index) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
