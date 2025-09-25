@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple File Share - P2P Direct</title>
+  <title>Simple File Share - Supabase</title>
   <style>
     * {
       margin: 0;
@@ -34,14 +34,24 @@
       text-align: center;
     }
 
-    .alert {
-      background: #d1ecf1;
-      border: 1px solid #bee5eb;
-      color: #0c5460;
-      padding: 15px;
+    .setup-notice {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 20px;
       margin: 20px;
       border-radius: 4px;
-      text-align: center;
+    }
+
+    .setup-notice h3 {
+      margin-bottom: 10px;
+    }
+
+    .setup-notice code {
+      background: #f8f9fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
     }
 
     .main-content {
@@ -108,11 +118,12 @@
       font-size: 14px;
     }
 
-    .share-info {
+    .share-code-display {
       background: #fff3cd;
       border: 1px solid #ffeaa7;
       border-radius: 4px;
       padding: 20px;
+      text-align: center;
       margin: 20px 0;
       display: none;
     }
@@ -124,20 +135,6 @@
       letter-spacing: 2px;
       margin: 10px 0;
       user-select: all;
-      text-align: center;
-    }
-
-    .connection-string {
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
-      padding: 10px;
-      margin: 10px 0;
-      font-family: monospace;
-      font-size: 12px;
-      word-break: break-all;
-      max-height: 100px;
-      overflow-y: auto;
     }
 
     .code-input {
@@ -172,19 +169,12 @@
       cursor: not-allowed;
     }
 
-    .btn-small {
-      padding: 8px 16px;
+    .copy-btn {
+      background: #4caf50;
+      padding: 10px 20px;
       font-size: 14px;
       width: auto;
-      margin: 5px;
-    }
-
-    .btn-success {
-      background: #28a745;
-    }
-
-    .btn-success:hover {
-      background: #218838;
+      margin-top: 10px;
     }
 
     .status {
@@ -224,24 +214,11 @@
       align-items: center;
     }
 
-    .instructions {
-      margin: 20px;
-      padding: 20px;
-      background: #e7f3ff;
-      border-left: 4px solid #2196F3;
-      border-radius: 4px;
-    }
-
-    .instructions h3 {
-      margin-bottom: 10px;
-      color: #1976D2;
-    }
-
-    .step {
-      margin: 10px 0;
-      padding: 10px;
-      background: #f8f9fa;
-      border-radius: 4px;
+    .download-btn {
+      background: #28a745;
+      padding: 8px 16px;
+      font-size: 14px;
+      width: auto;
     }
 
     @media (max-width: 768px) {
@@ -253,10 +230,6 @@
         border-right: none;
         border-bottom: 2px solid #eee;
       }
-
-      .connection-string {
-        font-size: 10px;
-      }
     }
   </style>
 </head>
@@ -264,23 +237,20 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>🚀 Simple File Share - Direct P2P</h1>
-      <p>Direct peer-to-peer file sharing using WebRTC</p>
+      <h1>🚀 Simple File Share - Supabase</h1>
+      <p>File sharing with Supabase Realtime signaling</p>
     </div>
 
-    <div class="alert">
-      <strong>✨ No Server Required!</strong> This version works directly between browsers without needing a signaling
-      server.
-    </div>
-
-    <div class="instructions">
-      <h3>📋 How to use:</h3>
-      <div class="step"><strong>1. SENDER:</strong> Select files → Click "Create Connection" → Copy the connection data
-      </div>
-      <div class="step"><strong>2. RECEIVER:</strong> Paste the connection data → Click "Connect" → Request files</div>
-      <div class="step"><strong>3. SENDER:</strong> Copy the response data → Paste it back → Connection established!
-      </div>
-      <div class="step"><strong>4.</strong> Files transfer directly between browsers - no server involved!</div>
+    <div class="setup-notice">
+      <h3>🔧 Setup Required:</h3>
+      <p>To use this version, you need to:</p>
+      <ol>
+        <li>Create a free Supabase account at <strong>supabase.com</strong></li>
+        <li>Create a new project</li>
+        <li>Replace the <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> below</li>
+        <li>Create a table called <code>signaling</code> with columns: <code>id, room_code, message_type, data, created_at</code></li>
+      </ol>
+      <p><strong>Benefits:</strong> Real-time messaging, persistent rooms, works perfectly with Vercel!</p>
     </div>
 
     <div class="main-content">
@@ -289,7 +259,7 @@
         <h2>📤 SEND FILES</h2>
 
         <div class="drop-zone" id="dropZone">
-          <p>📁 Drag files here or click to select</p>
+          <p>Drag files here or click to select</p>
           <small>Any file type, any size</small>
         </div>
 
@@ -300,61 +270,57 @@
           <div class="file-size" id="fileSize"></div>
         </div>
 
-        <button class="btn" id="createConnectionBtn" disabled>Create Connection</button>
+        <button class="btn" id="generateCodeBtn" disabled>Create Room</button>
 
-        <div class="share-info" id="shareInfo">
-          <h4>📋 Share this connection data with receiver:</h4>
-          <div class="connection-string" id="connectionOffer"></div>
-          <button class="btn btn-small btn-success" id="copyOfferBtn">Copy Connection Data</button>
-
-          <h4 style="margin-top: 20px;">📥 Paste receiver's response here:</h4>
-          <textarea class="connection-string" id="answerInput" placeholder="Paste the receiver's response data here..."
-            style="resize: vertical; min-height: 80px; width: 100%;"></textarea>
-          <button class="btn btn-small" id="processAnswerBtn">Process Response</button>
+        <div class="share-code-display" id="shareCodeDisplay">
+          <p>Share this room code with receivers:</p>
+          <div class="share-code" id="shareCode"></div>
+          <button class="btn copy-btn" id="copyCodeBtn">Copy Code</button>
+          <p><small>Keep this page open while others download</small></p>
         </div>
 
         <div class="status" id="sendStatus"></div>
-        <div class="download-area" id="sendFiles"></div>
+        <div class="download-area" id="senderFiles"></div>
       </div>
 
       <!-- RECEIVE FILES SECTION -->
       <div class="receive-section">
         <h2>📥 RECEIVE FILES</h2>
 
-        <h4>📋 Paste sender's connection data:</h4>
-        <textarea class="connection-string" id="offerInput" placeholder="Paste the sender's connection data here..."
-          style="resize: vertical; min-height: 100px; width: 100%;"></textarea>
+        <input type="text" class="code-input" id="codeInput" placeholder="Enter Room Code" maxlength="8">
 
         <button class="btn" id="connectBtn">Connect</button>
 
-        <div class="share-info" id="receiveInfo" style="display: none;">
-          <h4>📤 Copy this response data to sender:</h4>
-          <div class="connection-string" id="connectionAnswer"></div>
-          <button class="btn btn-small btn-success" id="copyAnswerBtn">Copy Response Data</button>
-        </div>
-
         <div class="status" id="receiveStatus"></div>
+
         <div class="download-area" id="downloadArea"></div>
       </div>
     </div>
   </div>
 
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
+    // Supabase configuration - REPLACE WITH YOUR CREDENTIALS
+    const SUPABASE_URL = 'https://your-project.supabase.co'
+    const SUPABASE_ANON_KEY = 'your-anon-key'
+    
+    const supabase = supabase ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
     // Global variables
     let selectedFiles = [];
+    let shareCode = '';
     let peerConnection = null;
     let dataChannel = null;
     let isSender = false;
-    let isConnected = false;
+    let roomSubscription = null;
 
-    // WebRTC configuration with multiple STUN servers
+    // WebRTC configuration
     const rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' }
       ]
     };
 
@@ -364,22 +330,23 @@
     const fileInfo = document.getElementById('fileInfo');
     const fileName = document.getElementById('fileName');
     const fileSize = document.getElementById('fileSize');
-    const createConnectionBtn = document.getElementById('createConnectionBtn');
-    const shareInfo = document.getElementById('shareInfo');
-    const connectionOffer = document.getElementById('connectionOffer');
-    const copyOfferBtn = document.getElementById('copyOfferBtn');
-    const answerInput = document.getElementById('answerInput');
-    const processAnswerBtn = document.getElementById('processAnswerBtn');
+    const generateCodeBtn = document.getElementById('generateCodeBtn');
+    const shareCodeDisplay = document.getElementById('shareCodeDisplay');
+    const shareCodeEl = document.getElementById('shareCode');
+    const copyCodeBtn = document.getElementById('copyCodeBtn');
     const sendStatus = document.getElementById('sendStatus');
-    const sendFiles = document.getElementById('sendFiles');
+    const senderFiles = document.getElementById('senderFiles');
 
-    const offerInput = document.getElementById('offerInput');
+    const codeInput = document.getElementById('codeInput');
     const connectBtn = document.getElementById('connectBtn');
-    const receiveInfo = document.getElementById('receiveInfo');
-    const connectionAnswer = document.getElementById('connectionAnswer');
-    const copyAnswerBtn = document.getElementById('copyAnswerBtn');
     const receiveStatus = document.getElementById('receiveStatus');
     const downloadArea = document.getElementById('downloadArea');
+
+    // Check if Supabase is configured
+    if (!supabase || SUPABASE_URL.includes('your-project')) {
+      showStatus(sendStatus, '❌ Please configure Supabase credentials in the code', 'error');
+      showStatus(receiveStatus, '❌ Please configure Supabase credentials in the code', 'error');
+    }
 
     // File selection handlers
     dropZone.addEventListener('click', () => fileInput.click());
@@ -408,7 +375,7 @@
       if (files.length > 0) {
         selectedFiles = Array.from(files);
         displayFileInfo();
-        createConnectionBtn.disabled = false;
+        generateCodeBtn.disabled = false;
       }
     }
 
@@ -438,198 +405,147 @@
     function createPeerConnection() {
       peerConnection = new RTCPeerConnection(rtcConfig);
 
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log('ICE candidate:', event.candidate);
+      peerConnection.onicecandidate = async (event) => {
+        if (event.candidate && supabase) {
+          await sendSignalingMessage('ice-candidate', {
+            candidate: event.candidate
+          });
         }
       };
 
       peerConnection.onconnectionstatechange = () => {
         console.log('Connection state:', peerConnection.connectionState);
-        const status = isSender ? sendStatus : receiveStatus;
-
         if (peerConnection.connectionState === 'connected') {
-          isConnected = true;
-          showStatus(status, '🎉 Connected! Ready for file transfer.', 'connected');
+          showStatus(isSender ? sendStatus : receiveStatus, '🎉 Connected! Ready for file transfer.', 'connected');
           if (isSender) {
             displaySenderFiles();
           }
-        } else if (peerConnection.connectionState === 'failed') {
-          showStatus(status, '❌ Connection failed. Please try again.', 'error');
-        } else if (peerConnection.connectionState === 'connecting') {
-          showStatus(status, '🔄 Connecting...', 'connected');
         }
-      };
-
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log('ICE connection state:', peerConnection.iceConnectionState);
       };
 
       return peerConnection;
     }
 
-    // Create connection (sender side)
-    createConnectionBtn.addEventListener('click', async () => {
-      isSender = true;
-      showStatus(sendStatus, '🔄 Creating connection...', 'connected');
+    // Send signaling message via Supabase
+    async function sendSignalingMessage(type, data) {
+      if (!supabase) return;
 
       try {
-        createPeerConnection();
-
-        // Create data channel
-        dataChannel = peerConnection.createDataChannel('fileTransfer', {
-          ordered: true
-        });
-
-        setupDataChannel(dataChannel);
-
-        // Create offer
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-
-        // Wait for ICE gathering to complete
-        await waitForIceGathering();
-
-        // Display the offer
-        const offerData = {
-          type: 'offer',
-          sdp: peerConnection.localDescription
-        };
-
-        connectionOffer.textContent = JSON.stringify(offerData, null, 2);
-        shareInfo.style.display = 'block';
-        showStatus(sendStatus, '📋 Share the connection data with receiver', 'connected');
-
+        await supabase
+          .from('signaling')
+          .insert({
+            room_code: shareCode || codeInput.value.trim(),
+            message_type: type,
+            data: data
+          });
       } catch (error) {
-        console.error('Error creating connection:', error);
-        showStatus(sendStatus, '❌ Error creating connection', 'error');
+        console.error('Error sending signaling message:', error);
       }
-    });
+    }
 
-    // Process answer from receiver
-    processAnswerBtn.addEventListener('click', async () => {
-      try {
-        const answerData = JSON.parse(answerInput.value.trim());
+    // Subscribe to signaling messages
+    function subscribeToRoom(roomCode) {
+      if (!supabase) return;
 
-        if (answerData.type === 'answer') {
-          await peerConnection.setRemoteDescription(answerData.sdp);
-          showStatus(sendStatus, '🔄 Processing response...', 'connected');
-        } else {
-          throw new Error('Invalid response data');
-        }
-      } catch (error) {
-        console.error('Error processing answer:', error);
-        showStatus(sendStatus, '❌ Invalid response data. Please check and try again.', 'error');
-      }
-    });
+      roomSubscription = supabase
+        .channel('signaling')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'signaling',
+          filter: `room_code=eq.${roomCode}`
+        }, handleSignalingMessage)
+        .subscribe();
+    }
 
-    // Connect as receiver
-    connectBtn.addEventListener('click', async () => {
-      isSender = false;
+    // Handle signaling messages
+    async function handleSignalingMessage(payload) {
+      const { message_type, data } = payload.new;
 
       try {
-        const offerData = JSON.parse(offerInput.value.trim());
+        if (message_type === 'offer' && !isSender) {
+          createPeerConnection();
+          setupDataChannel();
+          
+          await peerConnection.setRemoteDescription(data.offer);
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          
+          await sendSignalingMessage('answer', {
+            answer: answer
+          });
 
-        if (offerData.type !== 'offer') {
-          throw new Error('Invalid connection data');
-        }
+        } else if (message_type === 'answer' && isSender) {
+          await peerConnection.setRemoteDescription(data.answer);
 
-        showStatus(receiveStatus, '🔄 Connecting...', 'connected');
+        } else if (message_type === 'ice-candidate') {
+          await peerConnection.addIceCandidate(data.candidate);
 
-        createPeerConnection();
-
-        // Handle incoming data channel
-        peerConnection.ondatachannel = (event) => {
-          dataChannel = event.channel;
-          setupDataChannel(dataChannel);
-        };
-
-        // Set remote description
-        await peerConnection.setRemoteDescription(offerData.sdp);
-
-        // Create answer
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-
-        // Wait for ICE gathering
-        await waitForIceGathering();
-
-        // Display the answer
-        const answerData = {
-          type: 'answer',
-          sdp: peerConnection.localDescription
-        };
-
-        connectionAnswer.textContent = JSON.stringify(answerData, null, 2);
-        receiveInfo.style.display = 'block';
-        showStatus(receiveStatus, '📤 Copy the response data to sender', 'connected');
-
-      } catch (error) {
-        console.error('Error connecting:', error);
-        showStatus(receiveStatus, '❌ Invalid connection data. Please check and try again.', 'error');
-      }
-    });
-
-    // Wait for ICE gathering to complete
-    function waitForIceGathering() {
-      return new Promise((resolve) => {
-        if (peerConnection.iceGatheringState === 'complete') {
-          resolve();
-        } else {
-          peerConnection.addEventListener('icegatheringstatechange', () => {
-            if (peerConnection.iceGatheringState === 'complete') {
-              resolve();
-            }
+        } else if (message_type === 'receiver-joined' && isSender) {
+          // Create and send offer
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+          
+          await sendSignalingMessage('offer', {
+            offer: offer
           });
         }
-      });
+      } catch (error) {
+        console.error('Error handling signaling message:', error);
+      }
     }
 
     // Setup data channel
-    function setupDataChannel(channel) {
+    function setupDataChannel() {
       let currentFileData = null;
 
-      channel.onopen = () => {
-        console.log('Data channel opened');
-        if (isSender) {
-          showStatus(sendStatus, '🎉 Connected! Ready to send files.', 'connected');
-        } else {
-          showStatus(receiveStatus, '🎉 Connected! Requesting file list...', 'connected');
-          // Request file list
-          channel.send(JSON.stringify({ type: 'request-file-list' }));
-        }
-      };
+      if (isSender) {
+        dataChannel = peerConnection.createDataChannel('fileTransfer', {
+          ordered: true
+        });
+      } else {
+        peerConnection.ondatachannel = (event) => {
+          dataChannel = event.channel;
+        };
+      }
 
-      channel.onmessage = async (event) => {
-        try {
+      const setupChannelEvents = (channel) => {
+        channel.onopen = () => {
+          console.log('Data channel opened');
+          if (!isSender) {
+            // Request file list
+            channel.send(JSON.stringify({
+              type: 'request-file-list'
+            }));
+          }
+        };
+
+        channel.onmessage = async (event) => {
           const message = JSON.parse(event.data);
 
           if (message.type === 'request-file-list' && isSender) {
-            // Send file list
             const fileList = selectedFiles.map((file, index) => ({
               index,
               name: file.name,
               size: file.size,
               type: file.type
             }));
+            
             channel.send(JSON.stringify({
               type: 'file-list',
               files: fileList
             }));
 
           } else if (message.type === 'file-list' && !isSender) {
-            // Display available files
             displayAvailableFiles(message.files);
 
           } else if (message.type === 'file-request' && isSender) {
-            // Send requested file
             const fileIndex = message.index;
             if (selectedFiles[fileIndex]) {
               await sendFile(selectedFiles[fileIndex], channel);
             }
 
           } else if (message.type === 'file-info' && !isSender) {
-            // Prepare to receive file
             currentFileData = {
               name: message.name,
               size: message.size,
@@ -640,7 +556,6 @@
             showStatus(receiveStatus, `📥 Receiving ${message.name}...`, 'connected');
 
           } else if (message.type === 'file-chunk' && !isSender) {
-            // Receive file chunk
             if (currentFileData) {
               const chunk = new Uint8Array(message.data);
               currentFileData.data.set(chunk, message.offset);
@@ -656,27 +571,75 @@
               }
             }
           }
-        } catch (error) {
-          console.error('Error processing message:', error);
-        }
+        };
       };
 
-      channel.onclose = () => {
-        console.log('Data channel closed');
-        showStatus(isSender ? sendStatus : receiveStatus, '📡 Connection closed', 'error');
-      };
-
-      channel.onerror = (error) => {
-        console.error('Data channel error:', error);
-        showStatus(isSender ? sendStatus : receiveStatus, '❌ Connection error', 'error');
-      };
+      if (dataChannel) {
+        setupChannelEvents(dataChannel);
+      } else {
+        peerConnection.ondatachannel = (event) => {
+          dataChannel = event.channel;
+          setupChannelEvents(dataChannel);
+        };
+      }
     }
+
+    // Generate share code and start as sender
+    generateCodeBtn.addEventListener('click', async () => {
+      if (!supabase) return;
+
+      shareCode = Math.random().toString(36).substr(2, 8).toUpperCase();
+      shareCodeEl.textContent = shareCode;
+      shareCodeDisplay.style.display = 'block';
+      isSender = true;
+
+      showStatus(sendStatus, '🔄 Creating room...', 'connected');
+
+      createPeerConnection();
+      setupDataChannel();
+      subscribeToRoom(shareCode);
+
+      showStatus(sendStatus, '✅ Room created! Share the code with receivers.', 'connected');
+    });
+
+    // Connect as receiver
+    connectBtn.addEventListener('click', async () => {
+      if (!supabase) return;
+
+      const code = codeInput.value.trim().toUpperCase();
+      if (!code) {
+        showStatus(receiveStatus, '❌ Please enter a room code', 'error');
+        return;
+      }
+
+      isSender = false;
+      showStatus(receiveStatus, `🔄 Connecting to ${code}...`, 'connected');
+
+      subscribeToRoom(code);
+      
+      // Notify sender that receiver joined
+      await sendSignalingMessage('receiver-joined', {
+        message: 'Receiver joined the room'
+      });
+    });
+
+    // Copy code to clipboard
+    copyCodeBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(shareCode);
+        copyCodeBtn.textContent = '✅ Copied!';
+        setTimeout(() => {
+          copyCodeBtn.textContent = 'Copy Code';
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    });
 
     // Send file through data channel
     async function sendFile(file, channel) {
       if (channel.readyState !== 'open') return;
 
-      // Send file info
       channel.send(JSON.stringify({
         type: 'file-info',
         name: file.name,
@@ -684,8 +647,7 @@
         fileType: file.type
       }));
 
-      // Send file in chunks
-      const chunkSize = 16384; // 16KB chunks
+      const chunkSize = 16384;
       let offset = 0;
 
       while (offset < file.size) {
@@ -699,15 +661,13 @@
         }));
 
         offset += chunkSize;
-
-        // Small delay to prevent overwhelming
-        await new Promise(resolve => setTimeout(resolve, 5));
+        await new Promise(resolve => setTimeout(resolve, 10));
       }
 
       showStatus(sendStatus, `✅ Sent: ${file.name}`, 'connected');
     }
 
-    // Read file chunk
+    // Helper functions
     function readFileChunk(chunk) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -716,7 +676,6 @@
       });
     }
 
-    // Download received file
     function downloadFile(fileData) {
       const blob = new Blob([fileData.data], { type: fileData.type });
       const url = URL.createObjectURL(blob);
@@ -729,10 +688,9 @@
       URL.revokeObjectURL(url);
     }
 
-    // Display sender files
     function displaySenderFiles() {
-      sendFiles.innerHTML = '';
-
+      senderFiles.innerHTML = '';
+      
       selectedFiles.forEach((file, index) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -741,17 +699,16 @@
             <strong>${file.name}</strong><br>
             <small>${formatFileSize(file.size)}</small>
           </div>
-          <div>Ready to send</div>
+          <div style="color: #28a745; font-weight: bold;">Ready to send</div>
         `;
-        sendFiles.appendChild(fileItem);
+        senderFiles.appendChild(fileItem);
       });
     }
 
-    // Display available files (receiver side)
     function displayAvailableFiles(files) {
       downloadArea.innerHTML = '';
       showStatus(receiveStatus, '📁 Files available for download:', 'connected');
-
+      
       files.forEach((file) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -760,13 +717,12 @@
             <strong>${file.name}</strong><br>
             <small>${formatFileSize(file.size)}</small>
           </div>
-          <button class="btn btn-small btn-success" onclick="requestFile(${file.index})">Download</button>
+          <button class="btn download-btn" onclick="requestFile(${file.index})">Download</button>
         `;
         downloadArea.appendChild(fileItem);
       });
     }
 
-    // Request file download
     function requestFile(index) {
       if (dataChannel && dataChannel.readyState === 'open') {
         dataChannel.send(JSON.stringify({
@@ -776,41 +732,15 @@
       }
     }
 
-    // Copy to clipboard functions
-    copyOfferBtn.addEventListener('click', () => copyToClipboard(connectionOffer.textContent, copyOfferBtn));
-    copyAnswerBtn.addEventListener('click', () => copyToClipboard(connectionAnswer.textContent, copyAnswerBtn));
-
-    function copyToClipboard(text, button) {
-      navigator.clipboard.writeText(text).then(() => {
-        const originalText = button.textContent;
-        button.textContent = '✅ Copied!';
-        setTimeout(() => {
-          button.textContent = originalText;
-        }, 2000);
-      }).catch(() => {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-
-        const originalText = button.textContent;
-        button.textContent = '✅ Copied!';
-        setTimeout(() => {
-          button.textContent = originalText;
-        }, 2000);
-      });
-    }
-
-    // Show status
     function showStatus(element, message, type) {
       element.textContent = message;
       element.className = `status ${type}`;
     }
 
-    // Make requestFile available globally
+    codeInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
     window.requestFile = requestFile;
   </script>
 </body>
