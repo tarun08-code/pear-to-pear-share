@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShareMe Online - Supabase Storage</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .section {
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .drop-zone i {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            background: #f0f8ff;
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: center;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 2px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .share-code-display {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            color: white;
+        }
+
+        .share-code {
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 4px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .download-btn {
+            background: #28a745;
+            width: auto;
+            margin: 0;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📤 ShareMe Online</h1>
+            <p>Secure file sharing with Supabase Storage - Files auto-delete in 12 hours</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Sender Section -->
+            <div class="section">
+                <h2>📁 Share Files</h2>
+                
+                <div class="drop-zone" id="dropZone">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">📁</div>
+                    <p><strong>Click to select files</strong></p>
+                    <p>or drag and drop here</p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
+                        Maximum file size: 450 MB per file
+                    </p>
+                </div>
+
+                <input type="file" id="fileInput" class="file-input" multiple>
+
+                <div class="file-info" id="fileInfo">
+                    <div class="file-name" id="fileName"></div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+
+                <button class="btn" id="generateCodeBtn" disabled>🚀 Upload & Create Share Code</button>
+
+                <div class="share-code-display" id="shareCodeDisplay">
+                    <p>Share this code:</p>
+                    <div class="share-code" id="shareCode"></div>
+                    <button class="btn" id="copyCodeBtn" style="background: rgba(255,255,255,0.2); width: auto; margin-top: 10px;">Copy Code</button>
+                </div>
+
+                <div class="status" id="sendStatus" style="display: none;"></div>
+                <div id="senderFiles"></div>
+            </div>
+
+            <!-- Receiver Section -->
+            <div class="section">
+                <h2>📥 Download Files</h2>
+                
+                <div class="input-group">
+                    <input type="text" id="codeInput" placeholder="ENTER CODE" maxlength="8">
+                </div>
+
+                <button class="btn" id="connectBtn">🔗 Connect & Download</button>
+
+                <div class="status" id="receiveStatus" style="display: none;"></div>
+                <div id="downloadArea"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const supabaseUrl = 'https://fmjncwprwibklcafgxps.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtam5jd3Byd2lia2xjYWZneHBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ3Njg0NTEsImV4cCI6MjA1MDM0NDQ1MX0.L3K_4FoJjh-4MRqk2rGkjNjzN5bkuJM8fgBqRl7qZ7Y';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Constants
+        const MAX_FILE_SIZE = 450 * 1024 * 1024; // 450 MB
+        const EXPIRY_TIME = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+
+        // DOM elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const generateCodeBtn = document.getElementById('generateCodeBtn');
+        const shareCodeDisplay = document.getElementById('shareCodeDisplay');
+        const shareCode = document.getElementById('shareCode');
+        const copyCodeBtn = document.getElementById('copyCodeBtn');
+        const sendStatus = document.getElementById('sendStatus');
+        const senderFiles = document.getElementById('senderFiles');
+        const codeInput = document.getElementById('codeInput');
+        const connectBtn = document.getElementById('connectBtn');
+        const receiveStatus = document.getElementById('receiveStatus');
+        const downloadArea = document.getElementById('downloadArea');
+
+        // Global variables
+        let selectedFiles = [];
+        let shareCodeValue = '';
+        let uploadedFiles = [];
+        let roomSubscription = null;
+
+        // File handling
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        // Handle selected files
+        function handleFiles(files) {
+            if (files.length > 0) {
+                // Validate file sizes
+                for (const file of files) {
+                    if (file.size > MAX_FILE_SIZE) {
+                        alert(`File "${file.name}" is too large. Maximum file size is ${Math.round(MAX_FILE_SIZE / (1024 * 1024))} MB.`);
+                        return;
+                    }
+                }
+                
+                selectedFiles = Array.from(files);
+                displayFileInfo();
+                generateCodeBtn.disabled = false;
+            }
+        }
+
+        // Display file information
+        function displayFileInfo() {
+            if (selectedFiles.length === 1) {
+                fileName.textContent = selectedFiles[0].name;
+                fileSize.textContent = formatFileSize(selectedFiles[0].size);
+            } else {
+                fileName.textContent = `${selectedFiles.length} files selected`;
+                const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+                fileSize.textContent = `Total: ${formatFileSize(totalSize)}`;
+            }
+            fileInfo.style.display = 'block';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Upload files to Supabase Storage
+        async function uploadFilesToStorage(files, roomCode) {
+            try {
+                uploadedFiles = [];
+                showStatus(sendStatus, '📤 Uploading files...', 'connecting');
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const fileName = `${roomCode}/${Date.now()}_${file.name}`;
+                    
+                    showStatus(sendStatus, `📤 Uploading ${file.name} (${i + 1}/${files.length})...`, 'connecting');
+                    
+                    const { data, error } = await supabase.storage
+                        .from('shared-files')
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: false
+                        });
+                    
+                    if (error) throw error;
+                    
+                    // Get public URL
+                    const { data: urlData } = supabase.storage
+                        .from('shared-files')
+                        .getPublicUrl(fileName);
+                    
+                    const fileInfo = {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        path: fileName,
+                        url: urlData.publicUrl,
+                        uploadedAt: new Date().toISOString()
+                    };
+                    
+                    uploadedFiles.push(fileInfo);
+                }
+                
+                showStatus(sendStatus, '✅ All files uploaded successfully!', 'connected');
+                return uploadedFiles;
+                
+            } catch (error) {
+                console.error('Error uploading files:', error);
+                showStatus(sendStatus, '❌ Upload failed: ' + error.message, 'error');
+                throw error;
+            }
+        }
+
+        // Download file from Supabase Storage
+        async function downloadFileFromStorage(filePath, fileName) {
+            try {
+                showStatus(receiveStatus, `📥 Downloading ${fileName}...`, 'connecting');
+                
+                const { data, error } = await supabase.storage
+                    .from('shared-files')
+                    .download(filePath);
+                
+                if (error) throw error;
+                
+                // Create download link
+                const url = URL.createObjectURL(data);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showStatus(receiveStatus, `✅ Downloaded ${fileName}`, 'connected');
+                
+            } catch (error) {
+                console.error('Error downloading file:', error);
+                showStatus(receiveStatus, '❌ Download failed: ' + error.message, 'error');
+            }
+        }
+
+        // Display available files for download
+        function displayAvailableFiles(files) {
+            downloadArea.innerHTML = '';
+            
+            files.forEach((file) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <div>
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                        ${file.uploadedAt ? `<div style="font-size: 0.8rem; color: #666; margin-top: 5px;">Uploaded: ${new Date(file.uploadedAt).toLocaleString()}</div>` : ''}
+                    </div>
+                    <button class="btn download-btn" onclick="downloadStorageFile('${file.path}', '${file.name}')">Download</button>
+                `;
+                downloadArea.appendChild(fileItem);
+            });
+        }
+
+        // Create room and upload files
+        generateCodeBtn.addEventListener('click', async () => {
+            if (!supabase) return;
+
+            shareCodeValue = Math.random().toString(36).substr(2, 8).toUpperCase();
+            shareCode.textContent = shareCodeValue;
+            shareCodeDisplay.style.display = 'block';
+
+            try {
+                // Upload files to storage first
+                const files = await uploadFilesToStorage(selectedFiles, shareCodeValue);
+                
+                // Create room in database with file information
+                const { error: insertError } = await supabase
+                    .from('signaling')
+                    .insert({
+                        room_code: shareCodeValue,
+                        created_at: new Date().toISOString(),
+                        expires_at: new Date(Date.now() + EXPIRY_TIME).toISOString(),
+                        files: files
+                    });
+
+                if (insertError) throw insertError;
+
+                showStatus(sendStatus, '✅ Room created and files uploaded! Share the code with others.', 'connected');
+                
+                // Display uploaded files
+                senderFiles.innerHTML = '<h3 style="margin: 20px 0 10px 0; color: #333;">📤 Uploaded Files</h3>';
+                files.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <div>
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${formatFileSize(file.size)}</div>
+                        </div>
+                        <div style="color: #28a745; font-weight: bold;">✅ Uploaded</div>
+                    `;
+                    senderFiles.appendChild(fileItem);
+                });
+
+            } catch (error) {
+                console.error('Error creating room:', error);
+                showStatus(sendStatus, '❌ Failed to create room: ' + error.message, 'error');
+            }
+        });
+
+        // Connect and download files
+        connectBtn.addEventListener('click', async () => {
+            if (!supabase) return;
+
+            const code = codeInput.value.trim().toUpperCase();
+            if (!code) {
+                showStatus(receiveStatus, '❌ Please enter a room code', 'error');
+                return;
+            }
+
+            showStatus(receiveStatus, `🔄 Connecting to ${code}...`, 'connecting');
+
+            try {
+                // Check if room exists and get files
+                const { data: roomData, error: roomError } = await supabase
+                    .from('signaling')
+                    .select('*')
+                    .eq('room_code', code)
+                    .single();
+
+                if (roomError || !roomData) {
+                    throw new Error('Room not found or has expired');
+                }
+
+                // Check if room has expired
+                if (new Date() > new Date(roomData.expires_at)) {
+                    throw new Error('Room has expired');
+                }
+
+                if (roomData.files && roomData.files.length > 0) {
+                    displayAvailableFiles(roomData.files);
+                    showStatus(receiveStatus, `✅ Connected to ${code}! ${roomData.files.length} file(s) available for download.`, 'connected');
+                } else {
+                    showStatus(receiveStatus, `✅ Connected to ${code}! No files available yet.`, 'connected');
+                }
+
+            } catch (error) {
+                console.error('Error connecting to room:', error);
+                showStatus(receiveStatus, '❌ Failed to connect: ' + error.message, 'error');
+            }
+        });
+
+        // Copy code to clipboard
+        copyCodeBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(shareCodeValue);
+                copyCodeBtn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    copyCodeBtn.textContent = 'Copy Code';
+                }, 2000);
+            } catch (error) {
+                console.error('Failed to copy:', error);
+            }
+        });
+
+        // Utility functions
+        function showStatus(element, message, type) {
+            element.textContent = message;
+            element.className = `status ${type}`;
+            element.style.display = 'block';
+        }
+
+        // Convert code input to uppercase
+        codeInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase();
+        });
+
+        // Global function for download buttons
+        window.downloadStorageFile = function(filePath, fileName) {
+            downloadFileFromStorage(filePath, fileName);
+        };
+
+        // Check for Supabase connection
+        if (!supabase) {
+            console.error('Failed to initialize Supabase');
+            document.body.innerHTML = '<div style="text-align: center; padding: 50px; color: red;">Failed to initialize Supabase. Please check your configuration.</div>';
+        }
+    </script>
+</body>
+</html>

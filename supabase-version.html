@@ -248,7 +248,8 @@
         <li>Create a free Supabase account at <strong>supabase.com</strong></li>
         <li>Create a new project</li>
         <li>Replace the <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> below</li>
-        <li>Create a table called <code>signaling</code> with columns: <code>id, room_code, message_type, data, created_at</code></li>
+        <li>Create a table called <code>signaling</code> with columns:
+          <code>id, room_code, message_type, data, created_at</code></li>
       </ol>
       <p><strong>Benefits:</strong> Real-time messaging, persistent rooms, works perfectly with Vercel!</p>
     </div>
@@ -302,19 +303,23 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    // Supabase configuration - REPLACE WITH YOUR CREDENTIALS
-    const SUPABASE_URL = 'https://your-project.supabase.co'
-    const SUPABASE_ANON_KEY = 'your-anon-key'
+    // Supabase configuration
+    const SUPABASE_URL = 'https://fmjncwprwibklcafgxps.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtam5jd3Byd2lia2xjYWZneHBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3ODEyMDksImV4cCI6MjA3NDM1NzIwOX0.O7RLjndFUlu-BAFOKFAhWdI4G-vzPeSc_2uW6rO9rzs'
     
-    const supabase = supabase ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Global variables
+    // File constraints
+    const MAX_FILE_SIZE = 450 * 1024 * 1024; // 450MB
+    const FILE_EXPIRY_HOURS = 12;    // Global variables
     let selectedFiles = [];
     let shareCode = '';
     let peerConnection = null;
     let dataChannel = null;
     let isSender = false;
     let roomSubscription = null;
+    let uploadedFiles = [];
 
     // WebRTC configuration
     const rtcConfig = {
@@ -373,6 +378,14 @@
     // Handle selected files
     function handleFiles(files) {
       if (files.length > 0) {
+        // Validate file sizes
+        for (const file of files) {
+          if (file.size > MAX_FILE_SIZE) {
+            alert(`File "${file.name}" is too large. Maximum file size is ${Math.round(MAX_FILE_SIZE / (1024 * 1024 * 1024))} GB.`);
+            return;
+          }
+        }
+        
         selectedFiles = Array.from(files);
         displayFileInfo();
         generateCodeBtn.disabled = false;
@@ -450,27 +463,24 @@
       roomSubscription = supabase
         .channel('signaling')
         .on('postgres_changes', {
-          event: 'INSERT',
+          event: 'UPDATE',
           schema: 'public',
           table: 'signaling',
           filter: `room_code=eq.${roomCode}`
-        }, handleSignalingMessage)
+        }, handleRoomUpdate)
         .subscribe();
     }
 
-    // Handle signaling messages
-    async function handleSignalingMessage(payload) {
-      const { message_type, data } = payload.new;
+    // Handle room updates (for file changes)
+    async function handleRoomUpdate(payload) {
+      const { files } = payload.new;
 
-      try {
-        if (message_type === 'offer' && !isSender) {
-          createPeerConnection();
-          setupDataChannel();
-          
-          await peerConnection.setRemoteDescription(data.offer);
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          
+      if (files && files.length > 0 && !isSender) {
+        displayAvailableFiles(files);
+        showStatus(receiveStatus, '📁 New files available!', 'connected');
+      }
+    }
+
           await sendSignalingMessage('answer', {
             answer: answer
           });
@@ -485,7 +495,7 @@
           // Create and send offer
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
-          
+
           await sendSignalingMessage('offer', {
             offer: offer
           });
@@ -530,7 +540,7 @@
               size: file.size,
               type: file.type
             }));
-            
+
             channel.send(JSON.stringify({
               type: 'file-list',
               files: fileList
@@ -593,13 +603,34 @@
       shareCodeDisplay.style.display = 'block';
       isSender = true;
 
-      showStatus(sendStatus, '🔄 Creating room...', 'connected');
+      try {
+        showStatus(sendStatus, '🔄 Creating room and uploading files...', 'connecting');
 
-      createPeerConnection();
-      setupDataChannel();
-      subscribeToRoom(shareCode);
+        // Create room in database
+        const { error: insertError } = await supabase
+          .from('signaling')
+          .insert({
+            room_code: shareCode,
+            created_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + EXPIRY_TIME).toISOString(),
+            files: []
+          });
 
-      showStatus(sendStatus, '✅ Room created! Share the code with receivers.', 'connected');
+        if (insertError) throw insertError;
+
+        // Upload files to storage
+        await uploadFilesToStorage(selectedFiles, shareCode);
+
+        subscribeToRoom(shareCode);
+        showStatus(sendStatus, '✅ Room created and files uploaded! Share the code with receivers.', 'connected');
+        
+        // Display uploaded files
+        displaySenderFiles();
+
+      } catch (error) {
+        console.error('Error creating room:', error);
+        showStatus(sendStatus, '❌ Failed to create room: ' + error.message, 'error');
+      }
     });
 
     // Connect as receiver
@@ -612,15 +643,50 @@
         return;
       }
 
-      isSender = false;
-      showStatus(receiveStatus, `🔄 Connecting to ${code}...`, 'connected');
+    // Connect as receiver
+    connectBtn.addEventListener('click', async () => {
+      if (!supabase) return;
 
-      subscribeToRoom(code);
-      
-      // Notify sender that receiver joined
-      await sendSignalingMessage('receiver-joined', {
-        message: 'Receiver joined the room'
-      });
+      const code = codeInput.value.trim().toUpperCase();
+      if (!code) {
+        showStatus(receiveStatus, '❌ Please enter a room code', 'error');
+        return;
+      }
+
+      isSender = false;
+      showStatus(receiveStatus, `🔄 Connecting to ${code}...`, 'connecting');
+
+      try {
+        // Check if room exists and get files
+        const { data: roomData, error: roomError } = await supabase
+          .from('signaling')
+          .select('*')
+          .eq('room_code', code)
+          .single();
+
+        if (roomError || !roomData) {
+          throw new Error('Room not found or has expired');
+        }
+
+        // Check if room has expired
+        if (new Date() > new Date(roomData.expires_at)) {
+          throw new Error('Room has expired');
+        }
+
+        shareCode = code;
+        subscribeToRoom(code);
+
+        if (roomData.files && roomData.files.length > 0) {
+          displayAvailableFiles(roomData.files);
+          showStatus(receiveStatus, `✅ Connected to ${code}! Files are ready for download.`, 'connected');
+        } else {
+          showStatus(receiveStatus, `✅ Connected to ${code}! Waiting for files...`, 'connected');
+        }
+
+      } catch (error) {
+        console.error('Error connecting to room:', error);
+        showStatus(receiveStatus, '❌ Failed to connect: ' + error.message, 'error');
+      }
     });
 
     // Copy code to clipboard
@@ -688,9 +754,91 @@
       URL.revokeObjectURL(url);
     }
 
+    // Storage-based file sharing functions
+    async function uploadFilesToStorage(files, roomCode) {
+      try {
+        uploadedFiles = [];
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const fileName = `${roomCode}/${Date.now()}_${file.name}`;
+          
+          showStatus(sendStatus, `📤 Uploading ${file.name}...`, 'connecting');
+          
+          const { data, error } = await supabase.storage
+            .from('shared-files')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (error) throw error;
+          
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('shared-files')
+            .getPublicUrl(fileName);
+          
+          const fileInfo = {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            path: fileName,
+            url: urlData.publicUrl,
+            uploadedAt: new Date().toISOString()
+          };
+          
+          uploadedFiles.push(fileInfo);
+          showStatus(sendStatus, `✅ Uploaded ${file.name}`, 'connected');
+        }
+        
+        // Store file list in signaling table
+        await supabase
+          .from('signaling')
+          .update({ 
+            files: uploadedFiles,
+            updated_at: new Date().toISOString()
+          })
+          .eq('room_code', roomCode);
+        
+        return uploadedFiles;
+      } catch (error) {
+        console.error('Error uploading files:', error);
+        showStatus(sendStatus, '❌ Upload failed: ' + error.message, 'error');
+        throw error;
+      }
+    }
+
+    async function downloadFileFromStorage(filePath, fileName) {
+      try {
+        showStatus(receiveStatus, `📥 Downloading ${fileName}...`, 'connecting');
+        
+        const { data, error } = await supabase.storage
+          .from('shared-files')
+          .download(filePath);
+        
+        if (error) throw error;
+        
+        // Create download link
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showStatus(receiveStatus, `✅ Downloaded ${fileName}`, 'connected');
+      } catch (error) {
+        console.error('Error downloading file:', error);
+        showStatus(receiveStatus, '❌ Download failed: ' + error.message, 'error');
+      }
+    }
+
     function displaySenderFiles() {
       senderFiles.innerHTML = '';
-      
+
       selectedFiles.forEach((file, index) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -708,19 +856,24 @@
     function displayAvailableFiles(files) {
       downloadArea.innerHTML = '';
       showStatus(receiveStatus, '📁 Files available for download:', 'connected');
-      
-      files.forEach((file) => {
+
+      files.forEach((file, index) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
         fileItem.innerHTML = `
           <div>
             <strong>${file.name}</strong><br>
             <small>${formatFileSize(file.size)}</small>
+            ${file.uploadedAt ? `<br><small style="color: #666;">Uploaded: ${new Date(file.uploadedAt).toLocaleString()}</small>` : ''}
           </div>
-          <button class="btn download-btn" onclick="requestFile(${file.index})">Download</button>
+          <button class="btn download-btn" onclick="downloadStorageFile('${file.path}', '${file.name}')">Download</button>
         `;
         downloadArea.appendChild(fileItem);
       });
+    }
+
+    function downloadStorageFile(filePath, fileName) {
+      downloadFileFromStorage(filePath, fileName);
     }
 
     function requestFile(index) {
@@ -742,7 +895,7 @@
     });
 
     window.requestFile = requestFile;
+    window.downloadStorageFile = downloadStorageFile;
   </script>
 </body>
-
 </html>

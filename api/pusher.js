@@ -3,7 +3,7 @@ const Pusher = require('pusher');
 // Initialize Pusher (you'll need to add your credentials)
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID || 'your_app_id',
-  key: process.env.PUSHER_KEY || 'your_key', 
+  key: process.env.PUSHER_KEY || 'your_key',
   secret: process.env.PUSHER_SECRET || 'your_secret',
   cluster: process.env.PUSHER_CLUSTER || 'us2',
   useTLS: true

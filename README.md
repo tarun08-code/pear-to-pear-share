@@ -1,14 +1,14 @@
-# ShareMeOnline - WebRTC File Sharing
+# ShareMe Online - Supabase Storage Edition
 
-A peer-to-peer file sharing application using WebRTC technology. Share files directly between devices without uploading to any server.
+A secure file sharing application that uses Supabase Storage with 12-hour auto-cleanup. Files are automatically deleted after 12 hours to ensure privacy and manage storage costs.
 
 ## Features
 
-- 🔒 **Private & Secure**: Direct peer-to-peer transfers
-- 🚀 **No File Size Limits**: Transfer any size files
-- 📱 **Cross-Platform**: Works on any device with a modern browser
-- 🎯 **Simple Interface**: Just drag, drop, and share
-- 🔐 **Room-Based**: Secure 6-digit codes for connections
+- � **Upload & Share**: Upload files up to 450 MB and get a share code
+- � **Easy Download**: Enter a code to download files instantly  
+- ⏰ **Auto-Cleanup**: Files automatically delete after 12 hours
+- 🔒 **Secure**: Files are stored securely in Supabase Storage
+- � **Responsive**: Works on desktop and mobile devices
 - ⚡ **Real-time**: Instant file transfers once connected
 
 ## Prerequisites

@@ -251,8 +251,9 @@
     <div class="instructions">
       <h3>📋 How to use:</h3>
       <p><strong>1. SENDER:</strong> Select files → Click "Create Room" → Share the room code<br>
-         <strong>2. RECEIVER:</strong> Enter the room code → Click "Connect" → Download files<br>
-         <strong>3.</strong> Files transfer directly between browsers!</p>
+        <strong>2. RECEIVER:</strong> Enter the room code → Click "Connect" → Download files<br>
+        <strong>3.</strong> Files transfer directly between browsers!
+      </p>
     </div>
 
     <div class="main-content">
@@ -374,7 +375,7 @@
 
       conn.on('open', () => {
         console.log('Connection opened with:', conn.peer);
-        
+
         if (isSender) {
           // Send file list to receiver
           const fileList = selectedFiles.map((file, index) => ({
@@ -383,7 +384,7 @@
             size: file.size,
             type: file.type
           }));
-          
+
           conn.send({
             type: 'file-list',
             files: fileList
@@ -508,7 +509,7 @@
     generateCodeBtn.addEventListener('click', async () => {
       isSender = true;
       showStatus(sendStatus, '🔄 Creating room...', 'connected');
-      
+
       // Generate a user-friendly room code
       const roomId = 'room-' + Math.random().toString(36).substr(2, 8);
       initializePeer(roomId);
@@ -531,7 +532,7 @@
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        
+
         copyCodeBtn.textContent = '✅ Copied!';
         setTimeout(() => {
           copyCodeBtn.textContent = 'Copy Code';
@@ -551,7 +552,7 @@
       showStatus(receiveStatus, `🔄 Connecting to ${code}...`, 'connected');
 
       initializePeer();
-      
+
       peer.on('open', () => {
         console.log('Connecting to peer:', code);
         const conn = peer.connect(code);
@@ -586,7 +587,7 @@
           });
 
           offset += chunkSize;
-          
+
           // Small delay to prevent overwhelming
           await new Promise(resolve => setTimeout(resolve, 10));
         }
@@ -620,7 +621,7 @@
     // Display sender files
     function displaySenderFiles() {
       senderFiles.innerHTML = '';
-      
+
       selectedFiles.forEach((file, index) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -639,7 +640,7 @@
     function displayAvailableFiles(files) {
       downloadArea.innerHTML = '';
       showStatus(receiveStatus, '📁 Files available for download:', 'connected');
-      
+
       files.forEach((file) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -661,7 +662,7 @@
           type: 'file-request',
           index: index
         });
-        
+
         const button = document.getElementById(`btn-${index}`);
         button.textContent = 'Downloading...';
         button.disabled = true;
