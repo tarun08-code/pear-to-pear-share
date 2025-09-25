@@ -2,37 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "supabase-storage.html",
+      "src": "index.html",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/",
-      "dest": "/supabase-storage.html"
-    },
-    {
-      "src": "/storage",
-      "dest": "/supabase-storage.html"
+      "dest": "/index.html"
     },
     {
       "src": "/(.*)",
       "dest": "/$1"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cross-Origin-Embedder-Policy",
-          "value": "require-corp"
-        },
-        {
-          "key": "Cross-Origin-Opener-Policy",
-          "value": "same-origin"
-        }
-      ]
     }
   ]
 }

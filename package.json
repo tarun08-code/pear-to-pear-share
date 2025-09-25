@@ -2,12 +2,11 @@
   "name": "sharemeeonline-supabase",
   "version": "1.0.0",
   "description": "File sharing app with Supabase Storage and 12-hour auto-cleanup",
-  "main": "supabase-storage.html",
+  "main": "index.html",
   "scripts": {
     "start": "http-server . -p 3000",
     "dev": "http-server . -p 3000 -o",
-    "build": "echo 'No build needed for static files'",
-    "vercel-build": "echo 'Vercel build complete'"
+    "build": "echo 'No build needed for static files'"
   },
   "keywords": [
     "file-sharing",
