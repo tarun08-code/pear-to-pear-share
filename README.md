@@ -1,5 +1,7 @@
 # ShareMe Online - Supabase Storage Edition
 
+dineshtarun is a coder 
+
 A secure file sharing application that uses Supabase Storage with 12-hour auto-cleanup. Files are automatically deleted after 12 hours to ensure privacy and manage storage costs.
 
 ## Features
